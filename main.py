@@ -143,13 +143,13 @@ def predict_pm25(sequence, days=5):
     return predictions
 
 def get_air_quality_color(pm25):
-    if 0 <= pm25 <= 9:
+    if 0 <= pm25 < 10:
         return "rgb(173, 216, 230)"  # lightblue
-    elif 10 <= pm25 <= 19:
+    elif 10 <= pm25 < 10:
         return "rgb(0, 128, 0)"  # green
-    elif 20 <= pm25 <= 29:
+    elif 20 <= pm25 < 30:
         return "rgb(255, 255, 0)"  # yellow
-    elif 30 <= pm25 <= 39:
+    elif 30 <= pm25 < 40:
         return "rgb(255, 0, 0)"  # red
     elif 40 <= pm25 <= 49:
         return "rgb(238, 130, 238)"  # violet
@@ -157,13 +157,13 @@ def get_air_quality_color(pm25):
         return "rgb(128, 0, 128)"  # purple
 
 def get_air_quality_label(pm25):
-    if 0 <= pm25 <= 9:
+    if 0 <= pm25 < 10:
         return "Excellent"
-    elif 10 <= pm25 <= 19:
+    elif 10 <= pm25 < 20:
         return "Fair"
-    elif 20 <= pm25 <= 29:
+    elif 20 <= pm25 < 20:
         return "Poor"
-    elif 30 <= pm25 <= 39:
+    elif 30 <= pm25 < 40:
         return "Unhealthy"
     elif 40 <= pm25 <= 49:
         return "Very Unhealthy"
