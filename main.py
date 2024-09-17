@@ -21,11 +21,6 @@ OPENWEATHER_APPID = os.getenv('OPENWEATHER_APPID')
 LAT = "22.724"
 LON = "75.857"
 
-st.write(f"TensorFlow version: {tf.__version__}")
-try:
-    st.write(f"Keras version: {tf.keras.__version__}")
-except AttributeError:
-    st.write("Keras version: Not available")
 
 def create_model(input_shape):
     inputs = tf.keras.Input(shape=input_shape)
