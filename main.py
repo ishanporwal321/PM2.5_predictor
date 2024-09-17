@@ -143,32 +143,32 @@ def predict_pm25(sequence, days=5):
     return predictions
 
 def get_air_quality_color(pm25):
-    if 0 <= pm25 < 10:
-        return "rgb(173, 216, 230)"  # lightblue
-    elif 10 <= pm25 < 10:
-        return "rgb(0, 128, 0)"  # green
-    elif 20 <= pm25 < 30:
-        return "rgb(255, 255, 0)"  # yellow
-    elif 30 <= pm25 < 40:
-        return "rgb(255, 0, 0)"  # red
-    elif 40 <= pm25 <= 49:
-        return "rgb(238, 130, 238)"  # violet
+    if 0 <= pm25 < 12:
+        return "rgb(0, 228, 0)"  # Green
+    elif 12 <= pm25 < 35.5:
+        return "rgb(255, 255, 0)"  # Yellow
+    elif 35.5 <= pm25 < 55.5:
+        return "rgb(255, 126, 0)"  # Orange
+    elif 55.5 <= pm25 < 150.5:
+        return "rgb(255, 0, 0)"  # Red
+    elif 150.5 <= pm25 < 250.5:
+        return "rgb(143, 63, 151)"  # Purple
     else:
-        return "rgb(128, 0, 128)"  # purple
+        return "rgb(126, 0, 35)"  # Maroon
 
 def get_air_quality_label(pm25):
-    if 0 <= pm25 < 10:
-        return "Excellent"
-    elif 10 <= pm25 < 20:
-        return "Fair"
-    elif 20 <= pm25 < 20:
-        return "Poor"
-    elif 30 <= pm25 < 40:
+    if 0 <= pm25 < 12:
+        return "Good"
+    elif 12 <= pm25 < 35.5:
+        return "Moderate"
+    elif 35.5 <= pm25 < 55.5:
+        return "Unhealthy for Sensitive Groups"
+    elif 55.5 <= pm25 < 150.5:
         return "Unhealthy"
-    elif 40 <= pm25 <= 49:
+    elif 150.5 <= pm25 < 250.5:
         return "Very Unhealthy"
     else:
-        return "Dangerous"
+        return "Hazardous"
 
 # Streamlit app
 st.title("PM2.5 Prediction for Today and Next 4 Days")
