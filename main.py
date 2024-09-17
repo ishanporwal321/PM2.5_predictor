@@ -43,19 +43,25 @@ def create_model(input_shape):
     outputs = tf.keras.layers.Dense(1)(x)
     return tf.keras.Model(inputs=inputs, outputs=outputs)
 
-# Try to load models, if fails, create new ones
-try:
-    best_cnn_lstm_model = tf.keras.models.load_model('best_cnn_model.keras')
-    best_cnn_rnn_model = tf.keras.models.load_model('best_lstm_model.keras')
-    best_cnn_gru_model = tf.keras.models.load_model('best_gru_model.keras')
-    st.success("Models loaded successfully")
-except Exception as e:
-    st.warning(f"Error loading models: {str(e)}")
-    st.warning("Creating new models")
-    input_shape = (9, 1)  # Adjust this based on your actual input shape
-    best_cnn_lstm_model = create_model(input_shape)
-    best_cnn_rnn_model = create_model(input_shape)
-    best_cnn_gru_model = create_model(input_shape)
+# Function to load or create models
+def load_or_create_models():
+    model_files = ['best_cnn_model.keras', 'best_lstm_model.keras', 'best_gru_model.keras']
+    models = []
+    
+    for file in model_files:
+        try:
+            model = tf.keras.models.load_model(file)
+            st.success(f"Loaded model: {file}")
+            models.append(model)
+        except Exception as e:
+            st.warning(f"Error loading {file}: {str(e)}")
+            st.warning(f"Creating new model to replace {file}")
+            models.append(create_model((9, 1)))  # Adjust input shape if necessary
+    
+    return models
+
+# Load or create models
+best_cnn_lstm_model, best_cnn_rnn_model, best_cnn_gru_model = load_or_create_models()
 
 def convert_to_ms(speed):
     return speed * 0.44704 if speed > 100 else speed
