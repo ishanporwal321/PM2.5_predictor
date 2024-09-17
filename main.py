@@ -1,9 +1,9 @@
 import os
 import streamlit as st
+import tensorflow as tf
+import numpy as np
 from dotenv import load_dotenv
 import pandas as pd
-import numpy as np
-from tensorflow.keras.models import load_model
 import requests
 from datetime import datetime, timedelta
 import statistics
@@ -21,17 +21,38 @@ OPENWEATHER_APPID = os.getenv('OPENWEATHER_APPID')
 LAT = "22.724"
 LON = "75.857"
 
-# Load the best models
+st.write(f"TensorFlow version: {tf.__version__}")
+st.write(f"Keras version: {tf.keras.__version__}")
+
+def create_model(input_shape):
+    inputs = tf.keras.Input(shape=input_shape)
+    x = tf.keras.layers.Conv1D(64, 3, activation='relu', padding='same')(inputs)
+    x = tf.keras.layers.BatchNormalization()(x)
+    x = tf.keras.layers.MaxPooling1D(2, padding='same')(x)
+    x = tf.keras.layers.Conv1D(128, 3, activation='relu', padding='same')(x)
+    x = tf.keras.layers.BatchNormalization()(x)
+    x = tf.keras.layers.MaxPooling1D(2, padding='same')(x)
+    x = tf.keras.layers.Conv1D(256, 3, activation='relu', padding='same')(x)
+    x = tf.keras.layers.BatchNormalization()(x)
+    x = tf.keras.layers.Flatten()(x)
+    x = tf.keras.layers.Dense(128, activation='relu')(x)
+    x = tf.keras.layers.Dropout(0.25)(x)
+    outputs = tf.keras.layers.Dense(1)(x)
+    return tf.keras.Model(inputs=inputs, outputs=outputs)
+
+# Try to load models, if fails, create new ones
 try:
-    best_cnn_lstm_model = load_model('best_cnn_model.keras', compile=False)
-    best_cnn_rnn_model = load_model('best_lstm_model.keras', compile=False)
-    best_cnn_gru_model = load_model('best_gru_model.keras', compile=False)
+    best_cnn_lstm_model = tf.keras.models.load_model('best_cnn_model.keras')
+    best_cnn_rnn_model = tf.keras.models.load_model('best_lstm_model.keras')
+    best_cnn_gru_model = tf.keras.models.load_model('best_gru_model.keras')
+    st.success("Models loaded successfully")
 except Exception as e:
-    st.error(f"Error loading models: {str(e)}")
-    st.error("Using dummy prediction function for testing.")
-    
-    def predict_pm25(sequence, days=5):
-        return [np.random.uniform(10, 50) for _ in range(days)]
+    st.warning(f"Error loading models: {str(e)}")
+    st.warning("Creating new models")
+    input_shape = (9, 1)  # Adjust this based on your actual input shape
+    best_cnn_lstm_model = create_model(input_shape)
+    best_cnn_rnn_model = create_model(input_shape)
+    best_cnn_gru_model = create_model(input_shape)
 
 def convert_to_ms(speed):
     return speed * 0.44704 if speed > 100 else speed
