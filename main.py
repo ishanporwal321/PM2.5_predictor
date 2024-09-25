@@ -65,7 +65,7 @@ def fetch_weather_data(date):
     ist = pytz.timezone('Asia/Kolkata')
     utc = pytz.UTC
     
-    end_date = date.replace(tzinfo=ist)
+    end_date = date.replace(hour=0, minute=0, second=0, microsecond=0)
     start_date = end_date - timedelta(days=1)
     
     start_timestamp = int(start_date.astimezone(utc).timestamp())
@@ -104,7 +104,17 @@ def fetch_weather_data(date):
         return None
 
 def fetch_pm25(date=None):
-    api_url = "http://api.openweathermap.org/data/2.5/air_pollution/history?lat=22.724&lon=75.857&start=1726012200&end=1726098599&appid=f92b05f99a4e944501a4feb17a23a508"
+    if date is None:
+        date = datetime.now(pytz.UTC)  # Default to today if no date is provided
+
+    # Convert the date to timestamps
+    start_date = date.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=1)
+    end_date = date.replace(hour=0, minute=0, second=0, microsecond=0)
+
+    start_timestamp = int(start_date.timestamp())
+    end_timestamp = int(end_date.timestamp())
+
+    api_url = f"http://api.openweathermap.org/data/2.5/air_pollution/history?lat={LAT}&lon={LON}&start={start_timestamp}&end={end_timestamp}&appid={OPENWEATHER_APPID}"
     
     response = requests.get(api_url)
     if response.status_code == 200:
