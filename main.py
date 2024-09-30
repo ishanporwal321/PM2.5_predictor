@@ -152,6 +152,8 @@ def predict_pm25(sequence, days=5):
     
     return predictions
 
+
+
 def get_air_quality_color(pm25):
     if 0 <= pm25 < 12:
         return "rgb(0, 228, 0)"  # Green
@@ -202,6 +204,46 @@ if yesterday_data:
 else:
     st.error("Failed to fetch yesterday's weather data")
 
+def fetch_forecast_data():
+    api_url = f"http://api.openweathermap.org/data/2.5/air_pollution/forecast?lat={LAT}&lon={LON}&appid={OPENWEATHER_APPID}"
+    
+    try:
+        response = requests.get(api_url)
+        response.raise_for_status()
+        data = response.json()
+        
+        if data.get('list'):
+            daily_pm25 = {}
+            for item in data['list']:
+                # Convert the timestamp to a date
+                timestamp = item['dt']
+                date = datetime.fromtimestamp(timestamp, pytz.UTC).date()
+                
+                # Get the PM2.5 value
+                pm25_value = item['components']['pm2_5']
+                
+                # Group PM2.5 values by date
+                if date not in daily_pm25:
+                    daily_pm25[date] = []
+                daily_pm25[date].append(pm25_value)
+            
+            # Calculate the average PM2.5 for each day
+            average_pm25 = {date: statistics.mean(values) for date, values in daily_pm25.items()}
+            return average_pm25
+        else:
+            st.error("No forecast data available in the response")
+            return None
+    except requests.exceptions.RequestException as e:
+        st.error(f"Failed to fetch forecast data: {str(e)}")
+        return None
+    except json.JSONDecodeError as e:
+        st.error(f"Failed to parse API response: {str(e)}")
+        return None
+    except Exception as e:
+        st.error(f"An unexpected error occurred: {str(e)}")
+        return None
+
+# In your Streamlit app logic, after making predictions
 if today_data and yesterday_data:
     # Fetch PM2.5 data
     today_pm25 = fetch_pm25(today)
@@ -224,80 +266,104 @@ if today_data and yesterday_data:
         # Make predictions
         predictions = predict_pm25(sequence)
 
-        # Display results
-        st.subheader("PM2.5 Predictions")
-        
-        # Prepare data for the chart
-        dates = [(today + timedelta(days=i)).strftime('%Y-%m-%d') for i in range(5)]
-        colors = [get_air_quality_color(pred) for pred in predictions]
-        
-        # Create Plotly figure
-        fig = go.Figure(data=go.Scatter(
-            x=dates,
-            y=predictions,
-            mode='lines+markers',
-            line=dict(color='rgb(0, 0, 0)', width=2),
-            marker=dict(color=colors, size=10),
-            text=[f"{pred:.2f} µg/m³" for pred in predictions],
-            hoverinfo='text+x'
-        ))
-        
-        fig.update_layout(
-            title='PM2.5 Predictions for the Next 5 Days',
-            xaxis_title='Date',
-            yaxis_title='PM2.5 (µg/m³)',
-            height=400
-        )
-        
-        # Display the chart
-        st.plotly_chart(fig, use_container_width=True)
-        
-        # Display predictions with cards
-        st.write("Detailed Predictions:")
-        cols = st.columns(5)  # Create 5 columns for the 5 predictions
-        
-        for i, (date, pred) in enumerate(zip(dates, predictions)):
-            color = get_air_quality_color(pred)
-            label = get_air_quality_label(pred)
+        # Fetch forecast data
+        forecast_data = fetch_forecast_data()
+
+        # Prepare data for comparison
+        if forecast_data:
+            # Get the dates for the next 5 days
+            forecast_dates = [(today + timedelta(days=i)).date() for i in range(5)]
+            forecast_pm25 = [forecast_data.get(date, None) for date in forecast_dates]
+
+            # Display results
+            st.subheader("PM2.5 Predictions vs Forecast")
             
-            with cols[i]:
-                # Create a card-like container
-                with st.container():
-                    # Use HTML and CSS to create a split-color card
-                    html_content = f"""
-                    <div style="
-                        border: 1px solid #ddd;
-                        border-radius: 5px;
-                        overflow: hidden;
-                        height: 180px;
-                    ">
+            # Prepare data for the chart
+            colors = [get_air_quality_color(pred) for pred in predictions]
+            
+            # Create Plotly figure
+            fig = go.Figure()
+
+            # Add predicted values
+            fig.add_trace(go.Scatter(
+                x=forecast_dates,
+                y=predictions,
+                mode='lines+markers',
+                name='Predicted PM2.5',
+                line=dict(color='rgb(0, 0, 0)', width=2),
+                marker=dict(color=colors, size=10),
+                text=[f"{pred:.2f} µg/m³" for pred in predictions],
+                hoverinfo='text+x'
+            ))
+
+            # Add forecast values
+            if forecast_pm25:
+                forecast_colors = [get_air_quality_color(forecast) for forecast in forecast_pm25]
+                fig.add_trace(go.Scatter(
+                    x=forecast_dates,
+                    y=forecast_pm25,
+                    mode='lines+markers',
+                    name='Forecast PM2.5',
+                    line=dict(color='rgb(255, 0, 0)', width=2, dash='dash'),
+                    marker=dict(color=forecast_colors, size=10),
+                    text=[f"{forecast:.2f} µg/m³" for forecast in forecast_pm25],
+                    hoverinfo='text+x'
+                ))
+
+            fig.update_layout(
+                title='PM2.5 Predictions vs Forecast for the Next 5 Days',
+                xaxis_title='Date',
+                yaxis_title='PM2.5 (µg/m³)',
+                height=400
+            )
+            
+            # Display the chart
+            st.plotly_chart(fig, use_container_width=True)
+
+            # Display predictions with cards
+            st.write("Detailed Predictions:")
+            cols = st.columns(5)  # Create 5 columns for the 5 predictions
+            
+            for i, (date, pred, forecast) in enumerate(zip(forecast_dates, predictions, forecast_pm25)):
+                color = get_air_quality_color(pred)
+                label = get_air_quality_label(pred)
+                forecast_color = get_air_quality_color(forecast) if forecast is not None else "gray"
+                forecast_label = get_air_quality_label(forecast) if forecast is not None else "No Data"
+                
+                with cols[i]:
+                    # Create a card-like container
+                    with st.container():
+                        # Use HTML and CSS to create a split-color card
+                        html_content = f"""
                         <div style="
-                            background-color: {color};
-                            height: 50%;
-                        "></div>
-                        <div style="
-                            padding: 10px;
-                            text-align: center;
+                            border: 1px solid #ddd;
+                            border-radius: 5px;
+                            overflow: hidden;
+                            height: 180px;
                         ">
-                            <strong>{date}</strong><br>
-                            {pred:.2f} µg/m³<br>
-                            {label}
+                            <div style="
+                                background-color: {color};
+                                height: 50%;
+                            "></div>
+                            <div style="
+                                padding: 10px;
+                                text-align: center;
+                            ">
+                                <strong>{date}</strong><br>
+                                Predicted: {pred:.2f} µg/m³<br>
+                                {label}<br>
+                                Forecast: {forecast:.2f} µg/m³<br>
+                                {forecast_label}
+                            </div>
                         </div>
-                    </div>
-                    """
-                    st.markdown(html_content, unsafe_allow_html=True)
+                        """
+                        st.markdown(html_content, unsafe_allow_html=True)
+
+        else:
+            st.error("Failed to fetch forecast data. Cannot proceed with comparison.")
 
     else:
         st.error("Failed to fetch PM2.5 data. Cannot proceed with predictions.")
 
 else:
     st.error("Failed to fetch complete data. Cannot proceed with predictions.")
-
-# Display input data
-st.subheader("Input Data")
-if today_data and yesterday_data:
-    st.write("Today's data:", today_data)
-    st.write("Yesterday's data:", yesterday_data)
-    st.write(f"Yesterday's PM2.5: {yesterday_pm25:.2f}")
-else:
-    st.write("No input data available")
