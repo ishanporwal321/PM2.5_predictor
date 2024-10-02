@@ -46,7 +46,8 @@ def load_or_create_models():
     for file in model_files:
         try:
             model = tf.keras.models.load_model(file)
-            st.success(f"Loaded model: {file}")
+            # Commenting out the success message
+            # st.success(f"Loaded model: {file}")
             models.append(model)
         except Exception as e:
             st.warning(f"Error loading {file}: {str(e)}")
@@ -189,20 +190,55 @@ st.title("PM2.5 Prediction for Today and Next 4 Days")
 today = datetime.now(pytz.UTC)
 yesterday = today - timedelta(days=1)
 
-st.subheader("Weather Data Fetched")
-st.write("Today's data:")
+# st.subheader("Weather Data Fetched")
+# st.write("Today's data:")
 today_data = fetch_weather_data(today)
-if today_data:
-    st.json(today_data)
-else:
-    st.error("Failed to fetch today's weather data")
+# if today_data:
+#     st.json(today_data)
+# else:
+#     st.error("Failed to fetch today's weather data")
 
-st.write("Yesterday's data:")
+# st.write("Yesterday's data:")
 yesterday_data = fetch_weather_data(yesterday)
-if yesterday_data:
-    st.json(yesterday_data)
-else:
-    st.error("Failed to fetch yesterday's weather data")
+# if yesterday_data:
+#     st.json(yesterday_data)
+# else:
+#     st.error("Failed to fetch yesterday's weather data")
+
+# Other imports and code...
+
+def get_aqi_message(aqi):
+    """Return a message based on the AQI value."""
+    if aqi < 20:
+        return ("Excellent", "The air quality is ideal for most individuals; enjoy your normal outdoor activities.")
+    elif aqi < 50:
+        return ("Fair", "The air quality is generally acceptable for most individuals. However, sensitive groups may experience minor to moderate symptoms from long-term exposure.")
+    elif aqi < 100:
+        return ("Poor", "The air has reached a high level of pollution and is unhealthy for sensitive groups. Reduce time spent outside if you are feeling symptoms such as difficulty breathing or throat irritation.")
+    elif aqi < 150:
+        return ("Unhealthy", "Health effects can be immediately felt by sensitive groups. Healthy individuals may experience difficulty breathing and throat irritation with prolonged exposure. Limit outdoor activity.")
+    elif aqi < 250:
+        return ("Very Unhealthy", "Health effects will be immediately felt by sensitive groups and should avoid outdoor activity. Healthy individuals are likely to experience difficulty breathing and throat irritation; consider staying indoors and rescheduling outdoor activities.")
+    else:
+        return ("Dangerous", "Any exposure to the air, even for a few minutes, can lead to serious health effects on everybody. Avoid outdoor activities.")
+    
+
+def calculate_aqi(pm25):
+    """Calculate AQI based on PM2.5 concentration."""
+    if pm25 < 12:
+        return pm25 * 50 / 12  # Good
+    elif pm25 < 35.5:
+        return 50 + (pm25 - 12) * 50 / (35.5 - 12)  # Moderate
+    elif pm25 < 55.5:
+        return 100 + (pm25 - 35.5) * 100 / (55.5 - 35.5)  # Unhealthy for Sensitive Groups
+    elif pm25 < 150.5:
+        return 150 + (pm25 - 55.5) * 100 / (150.5 - 55.5)  # Unhealthy
+    elif pm25 < 250.5:
+        return 200 + (pm25 - 150.5) * 100 / (250.5 - 150.5)  # Very Unhealthy
+    else:
+        return 300 + (pm25 - 250.5) * 100 / (500 - 250.5)  # Hazardous
+
+# Rest of your code...
 
 def fetch_forecast_data():
     api_url = f"http://api.openweathermap.org/data/2.5/air_pollution/forecast?lat={LAT}&lon={LON}&appid={OPENWEATHER_APPID}"
@@ -322,42 +358,113 @@ if today_data and yesterday_data:
 
             # Display predictions with cards
             st.write("Detailed Predictions:")
-            cols = st.columns(5)  # Create 5 columns for the 5 predictions
-            
-            for i, (date, pred, forecast) in enumerate(zip(forecast_dates, predictions, forecast_pm25)):
-                color = get_air_quality_color(pred)
-                label = get_air_quality_label(pred)
-                forecast_color = get_air_quality_color(forecast) if forecast is not None else "gray"
-                forecast_label = get_air_quality_label(forecast) if forecast is not None else "No Data"
+
+            # First row - Full-width card
+            with st.container():
+                # Calculate AQI from predicted PM2.5
+                predicted_aqi = calculate_aqi(predictions[0])  # Assuming predictions[0] is for the first date
+                color = get_air_quality_color(predictions[0])
+                label = get_air_quality_label(predictions[0])
                 
-                with cols[i]:
-                    # Create a card-like container
-                    with st.container():
-                        # Use HTML and CSS to create a split-color card
-                        html_content = f"""
+                # Get AQI message
+                aqi_label, aqi_message = get_aqi_message(predicted_aqi)
+                
+                # Use HTML and CSS to create a full-width card
+                html_content = f"""
+                <div style="
+                    border: 1px solid #ddd;
+                    border-radius: 5px;
+                    overflow: hidden;
+                    height: 400px;
+                    width: 100%;
+                    margin-bottom: 20px;  /* Add margin to create space below the card */
+                ">
+                    <div style="
+                        background-color: {color};
+                        height: 20%;
+                    "></div>
+                    <div style="
+                        padding: 20px;  /* Increased padding for better spacing */
+                        text-align: center;
+                        font-family: Arial, sans-serif;
+                    ">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <strong style="font-size: 18px;">{label}</strong>
+                            <strong style="font-size: 18px;">{forecast_dates[0]}</strong>
+                        </div>
+                        <div style="font-size: 24px; margin: 10px 0;">{predictions[0]:.2f} µg/m³</div>
                         <div style="
-                            border: 1px solid #ddd;
+                            background-color: {'#5cb85c' if predicted_aqi < 50 else '#f0ad4e' if predicted_aqi < 100 else '#d9534f'};
+                            padding: 10px;
                             border-radius: 5px;
-                            overflow: hidden;
-                            height: 180px;
+                            display: inline-block;
+                            margin-top: 10px;
                         ">
+                            <i class="fas fa-wind" style="font-size: 24px; color: white;"></i><br>
+                            <strong style="font-size: 20px; color: white;">AQI: {predicted_aqi:.2f}</strong>
+                        </div>
+                        <div style="margin-top: 10px; font-size: 16px; color: grey;">
+                            <strong>{aqi_label}</strong>: {aqi_message}
+                        </div>
+                    </div>
+                </div>
+                """
+                st.markdown(html_content, unsafe_allow_html=True)
+
+            # Second row - Two columns with two cards each
+            cols = st.columns(2)
+
+            for i in range(1, 5):  # Start from the second prediction
+                with cols[i % 2]:  # Alternate between the two columns
+                    predicted_aqi = calculate_aqi(predictions[i])
+                    color = get_air_quality_color(predictions[i])
+                    label = get_air_quality_label(predictions[i])
+                    
+                    # Get AQI message
+                    aqi_label, aqi_message = get_aqi_message(predicted_aqi)
+                    
+                    html_content = f"""
+                    <div style="
+                        border: 1px solid #ddd;
+                        border-radius: 5px;
+                        overflow: hidden;
+                        height: 500px;
+                        margin-bottom: 20px;  /* Add margin to create space below the card */
+                    ">
+                        <div style="
+                            background-color: {color};
+                            height: 20%;
+                        "></div>
+                        <div style="
+                            padding: 20px;  /* Increased padding for better spacing */
+                            text-align: center;
+                            font-family: Arial, sans-serif;
+                        ">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <strong style="font-size: 18px;">{label}</strong>
+                                <strong style="font-size: 18px;">{forecast_dates[i]}</strong>
+                            </div>
+                            <div style="font-size: 24px; margin: 10px 0;">{predictions[i]:.2f} µg/m³</div>
                             <div style="
-                                background-color: {color};
-                                height: 50%;
-                            "></div>
-                            <div style="
+                                background-color: {'#5cb85c' if predicted_aqi < 50 else '#f0ad4e' if predicted_aqi < 100 else '#d9534f'};
                                 padding: 10px;
-                                text-align: center;
+                                border-radius: 5px;
+                                display: inline-block;
+                                margin-top: 10px;
                             ">
-                                <strong>{date}</strong><br>
-                                Predicted: {pred:.2f} µg/m³<br>
-                                {label}<br>
-                                Forecast: {forecast:.2f} µg/m³<br>
-                                {forecast_label}
+                                <i class="fas fa-wind" style="font-size: 24px; color: white;"></i><br>
+                                <strong style="font-size: 20px; color: white;">AQI: {predicted_aqi:.2f}</strong>
+                            </div>
+                            <div style="margin-top: 10px; font-size: 16px; color: grey;">
+                                <strong>{aqi_label}</strong>: {aqi_message}
                             </div>
                         </div>
-                        """
-                        st.markdown(html_content, unsafe_allow_html=True)
+                    </div>
+                    """
+                    st.markdown(html_content, unsafe_allow_html=True)
+            
+
+
 
         else:
             st.error("Failed to fetch forecast data. Cannot proceed with comparison.")
