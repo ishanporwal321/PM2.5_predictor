@@ -158,6 +158,49 @@ def predict_pm25(sequence, days=5):
 def get_air_quality_color(pm25):
     if 0 <= pm25 < 12:
         return "rgb(0, 228, 0)"  # Green
+    elif 12.1 <= pm25 < 35.4:
+        return "rgb(255, 255, 0)"  # Yellow
+    elif 35.5 <= pm25 < 55.4:
+        return "rgb(255, 126, 0)"  # Orange
+    elif 55.5 <= pm25 < 150.4:
+        return "rgb(255, 0, 0)"  # Red
+    elif 150.5 <= pm25 < 250.4:
+        return "rgb(143, 63, 151)"  # Purple
+    else:
+        return "rgb(126, 0, 35)"  # Maroon
+    
+def get_air_quality_color_in(pm25):
+    if 0 <= pm25 < 30:
+        return "rgb(0, 228, 0)"  # Green
+    elif 31 <= pm25 < 60:
+        return "rgb(255, 255, 0)"  # Yellow
+    elif 61 <= pm25 < 90:
+        return "rgb(255, 126, 0)"  # Orange
+    elif 91 <= pm25 < 120:
+        return "rgb(255, 0, 0)"  # Red
+    elif 121 <= pm25 < 250:
+        return "rgb(143, 63, 151)"  # Purple
+    else:
+        return "rgb(126, 0, 35)"  # Maroon    
+    
+
+def get_air_quality_label(pm25):
+    if 0 <= pm25 < 30:
+        return "Good"
+    elif 31 <= pm25 < 60:
+        return "Moderate"
+    elif 61 <= pm25 < 90:
+        return "Unhealthy for Sensitive Groups"
+    elif 91 <= pm25 < 120:
+        return "Unhealthy"
+    elif 121 <= pm25 < 250:
+        return "Very Unhealthy"
+    else:
+        return "Hazardous"
+    
+def get_air_quality_color_in(pm25):
+    if 0 <= pm25 < 12:
+        return "rgb(0, 228, 0)"  # Green
     elif 12 <= pm25 < 35.5:
         return "rgb(255, 255, 0)"  # Yellow
     elif 35.5 <= pm25 < 55.5:
@@ -169,7 +212,7 @@ def get_air_quality_color(pm25):
     else:
         return "rgb(126, 0, 35)"  # Maroon
 
-def get_air_quality_label(pm25):
+def get_air_quality_label_in(pm25):
     if 0 <= pm25 < 12:
         return "Good"
     elif 12 <= pm25 < 35.5:
@@ -184,7 +227,7 @@ def get_air_quality_label(pm25):
         return "Hazardous"
 
 # Streamlit app
-st.title("PM2.5 Prediction for Today and Next 4 Days")
+st.title("PM2.5 and AQI for Indore City")
 
 # Fetch data for today and yesterday
 today = datetime.now(pytz.UTC)
@@ -237,8 +280,21 @@ def calculate_aqi(pm25):
         return 200 + (pm25 - 150.5) * 100 / (250.5 - 150.5)  # Very Unhealthy
     else:
         return 300 + (pm25 - 250.5) * 100 / (500 - 250.5)  # Hazardous
-
-# Rest of your code...
+    
+def calculate_aqi_in(pm25):
+    """Calculate AQI based on PM2.5 concentration."""
+    if pm25 <= 30:
+        return pm25 * 50 / 30  # Good
+    elif pm25 <= 60:
+        return 50 + (pm25 - 30) * 50 / (60 - 30)  # Moderate
+    elif pm25 <= 90:
+        return 100 + (pm25 - 60) * 100 / (90 - 60)  # Unhealthy for Sensitive Groups
+    elif pm25 <= 120:
+        return 200 + (pm25 - 90) * 100 / (120 - 90)  # Unhealthy
+    elif pm25 < 250:
+        return 300 + (pm25 - 120) * 100 / (250 - 120)  # Very Unhealthy
+    else:
+        return 400 + (pm25 - 250) * 100 / (500 - 250)
 
 def fetch_forecast_data():
     api_url = f"http://api.openweathermap.org/data/2.5/air_pollution/forecast?lat={LAT}&lon={LON}&appid={OPENWEATHER_APPID}"
@@ -311,9 +367,7 @@ if today_data and yesterday_data:
             forecast_dates = [(today + timedelta(days=i)).date() for i in range(5)]
             forecast_pm25 = [forecast_data.get(date, None) for date in forecast_dates]
 
-            # Display results
-            st.subheader("PM2.5 Predictions vs Forecast")
-            
+            # Display results            
             # Prepare data for the chart
             colors = [get_air_quality_color(pred) for pred in predictions]
             
@@ -325,7 +379,7 @@ if today_data and yesterday_data:
                 x=forecast_dates,
                 y=predictions,
                 mode='lines+markers',
-                name='Predicted PM2.5',
+                name='Predicted PM2.5 by IIT Indore',
                 line=dict(color='rgb(0, 0, 0)', width=2),
                 marker=dict(color=colors, size=10),
                 text=[f"{pred:.2f} µg/m³" for pred in predictions],
@@ -339,7 +393,7 @@ if today_data and yesterday_data:
                     x=forecast_dates,
                     y=forecast_pm25,
                     mode='lines+markers',
-                    name='Forecast PM2.5',
+                    name='Forecast PM2.5 by Open Weather',
                     line=dict(color='rgb(255, 0, 0)', width=2, dash='dash'),
                     marker=dict(color=forecast_colors, size=10),
                     text=[f"{forecast:.2f} µg/m³" for forecast in forecast_pm25],
@@ -347,7 +401,7 @@ if today_data and yesterday_data:
                 ))
 
             fig.update_layout(
-                title='PM2.5 Predictions vs Forecast for the Next 5 Days',
+                title='PM2.5 Predictions by IIT Indore vs Forecast by Open Weather',
                 xaxis_title='Date',
                 yaxis_title='PM2.5 (µg/m³)',
                 height=400
@@ -365,6 +419,9 @@ if today_data and yesterday_data:
                 predicted_aqi = calculate_aqi(predictions[0])  # Assuming predictions[0] is for the first date
                 color = get_air_quality_color(predictions[0])
                 label = get_air_quality_label(predictions[0])
+                predicted_aqi_in = calculate_aqi_in(predictions[0])  # Assuming predictions[0] is for the first date
+                color_in = get_air_quality_color_in(predictions[0])
+                label_in = get_air_quality_label(predictions[0])                
                 
                 # Get AQI message
                 aqi_label, aqi_message = get_aqi_message(predicted_aqi)
@@ -394,15 +451,27 @@ if today_data and yesterday_data:
                         </div>
                         <div style="font-size: 24px; margin: 10px 0;">{predictions[0]:.2f} µg/m³</div>
                         <div style="
-                            background-color: {'#5cb85c' if predicted_aqi < 50 else '#f0ad4e' if predicted_aqi < 100 else '#d9534f'};
+                            background-color: {'#5cb85c' if predicted_aqi_in < 50 else '#f0ad4e' if predicted_aqi < 100 else '#d9534f'};
                             padding: 10px;
                             border-radius: 5px;
                             display: inline-block;
                             margin-top: 10px;
                         ">
                             <i class="fas fa-wind" style="font-size: 24px; color: white;"></i><br>
-                            <strong style="font-size: 20px; color: white;">AQI: {predicted_aqi:.2f}</strong>
+                            <strong style="font-size: 15px; color: white;">Indian AQI</strong><br>                          
+                            <strong style="font-size: 20px; color: white;">AQI: {predicted_aqi_in:.2f}</strong>
                         </div>
+                            <div style="
+                                background-color: {'#5cb85c' if predicted_aqi < 50 else '#f0ad4e' if predicted_aqi < 100 else '#d9534f'};
+                                padding: 10px;
+                                border-radius: 5px;
+                                display: inline-block;
+                                margin-top: 10px;
+                            ">
+                                <i class="fas fa-wind" style="font-size: 24px; color: white;"></i><br>
+                                <strong style="font-size: 15px; color: white;">US EPA AQI</strong><br>                          
+                                <strong style="font-size: 20px; color: white;">AQI: {predicted_aqi:.2f}</strong>
+                            </div>                        
                         <div style="margin-top: 10px; font-size: 16px; color: grey;">
                             <strong>{aqi_label}</strong>: {aqi_message}
                         </div>
@@ -419,6 +488,9 @@ if today_data and yesterday_data:
                     predicted_aqi = calculate_aqi(predictions[i])
                     color = get_air_quality_color(predictions[i])
                     label = get_air_quality_label(predictions[i])
+                    predicted_aqi_in = calculate_aqi_in(predictions[i])
+                    color_in = get_air_quality_color_in(predictions[i])
+                    label_in = get_air_quality_label(predictions[i])                    
                     
                     # Get AQI message
                     aqi_label, aqi_message = get_aqi_message(predicted_aqi)
@@ -446,6 +518,17 @@ if today_data and yesterday_data:
                             </div>
                             <div style="font-size: 24px; margin: 10px 0;">{predictions[i]:.2f} µg/m³</div>
                             <div style="
+                                background-color: {'#5cb85c' if predicted_aqi_in < 50 else '#f0ad4e' if predicted_aqi < 100 else '#d9534f'};
+                                padding: 10px;
+                                border-radius: 5px;
+                                display: inline-block;
+                                margin-top: 10px;
+                            ">
+                                <i class="fas fa-wind" style="font-size: 24px; color: white;"></i><br>
+                                <strong style="font-size: 15px; color: white;">Indian AQI</strong><br>                          
+                                <strong style="font-size: 20px; color: white;">AQI: {predicted_aqi_in:.2f}</strong>
+                            </div>
+                            <div style="
                                 background-color: {'#5cb85c' if predicted_aqi < 50 else '#f0ad4e' if predicted_aqi < 100 else '#d9534f'};
                                 padding: 10px;
                                 border-radius: 5px;
@@ -453,8 +536,9 @@ if today_data and yesterday_data:
                                 margin-top: 10px;
                             ">
                                 <i class="fas fa-wind" style="font-size: 24px; color: white;"></i><br>
+                                <strong style="font-size: 15px; color: white;">US EPA AQI</strong><br>                          
                                 <strong style="font-size: 20px; color: white;">AQI: {predicted_aqi:.2f}</strong>
-                            </div>
+                            </div>                            
                             <div style="margin-top: 10px; font-size: 16px; color: grey;">
                                 <strong>{aqi_label}</strong>: {aqi_message}
                             </div>
