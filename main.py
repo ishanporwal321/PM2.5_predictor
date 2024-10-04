@@ -400,14 +400,22 @@ if today_data and yesterday_data:
                     hoverinfo='text+x'
                 ))
 
+            # Update layout to position the legend above the graph
             fig.update_layout(
                 title='PM2.5 Predictions by IIT Indore vs Forecast by Open Weather',
                 xaxis_title='Date',
                 yaxis_title='PM2.5 (µg/m³)',
-                height=400
+                height=400,
+                legend=dict(
+                    orientation="h",  # Horizontal orientation
+                    yanchor="bottom",  # Anchor the legend to the bottom
+                    y=1.02,  # Position it slightly above the graph
+                    xanchor="center",  # Center the legend
+                    x=0.5  # Center the legend horizontally
+                )
             )
-            
-            # Display the chart
+
+            # Display the figure
             st.plotly_chart(fig, use_container_width=True)
 
             # Display predictions with cards
